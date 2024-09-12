@@ -1,3 +1,4 @@
+
 import re
 import shutil
 import threading
@@ -673,3 +674,118 @@ class LibraryDuplicateCheckDYC(_PluginBase):
                 self._scheduler = None
         except Exception as e:
             logger.error("退出插件失败：%s" % str(e))
+
+
+import re
+from typing import List
+
+class EnhancedVideoFileManager:
+    def __init__(self, delete_softlink: bool = False):
+        self._delete_softlink = delete_softlink
+        self.priority = {
+            'resolution': ["4K", "2K", "1080p", "720p"],
+            'source': ["BLU-RAY", "WEB-DL", "WEBRIP", "HDTV", "DVD", "REMUX", "其它"],
+            'hdr': ["Dolby Vision", "HDR10+", "HDR10", "HLG", "SDR", "无HDR"],
+            'bit_depth': ["12-bit", "10-bit", "8-bit", "未知"],
+            'file_size': "largest",  # 可选 "smallest" 或 "largest"
+            'creation_time': "newest"  # 可选 "newest" 或 "oldest"
+        }
+
+    def extract_video_info(self, file_name: str):
+        # Patterns to match various attributes in file names
+        patterns = {
+            'resolution': r'(\b4[Kk]\b|\b[Uu][Hh][Dd]\b|\b1080[pP]\b|\b[Ff][Hh][Dd]\b|\b720[pP]\b|\b[Hh][Dd]\b|\b2[Kk]\b|\b[Qq][Hh][Dd]\b|\b1440[pP]\b|\b480[pP]\b|\b360[pP]\b|\b240[pP]\b|\b144[pP]\b)',
+            'source': r'(\b[Bb][Ll][Uu][-]?[Rr][Aa]?[Yy]\b|\b[Bb][Dd]\b|\b[Bb][Rr][Rr]?[Ii]?[Pp]\b|\b[Ww][Ee][Bb][-]?[Dd][Ll]\b|\b[Ww][Ee][Bb][-]?[Rr][Ii][Pp]\b|\b[Hh][Dd][Tt][Vv]\b|\b[Dd][Vv][Dd][-]?[Rr]?[Ii]?[Pp]?\b|\b[Rr][Ee][Mm][Uu][Xx]\b|\b[Cc][Aa][Mm]\b|\b[Tt][Ss]\b)',
+            'hdr': r'(\b[Hh][Dd][Rr]10\+?\b|\b[Dd]olby[- ]?[Vv]ision\b|\b[Hh][Ll][Gg]\b|\b[Ss][Dd][Rr]\b)',
+            'bit_depth': r'(\b8[- ]?[Bb][Ii][Tt]\b|\b10[- ]?[Bb][Ii][Tt]\b|\b12[- ]?[Bb][Ii][Tt]\b|\b16[- ]?[Bb][Ii][Tt]\b)'
+        }
+
+        info = {
+            'resolution': '未知',
+            'source': '其它',
+            'hdr': '无HDR',
+            'bit_depth': '未知'
+        }
+
+        # Match patterns and extract information
+        for key, pattern in patterns.items():
+            match = re.search(pattern, file_name, re.IGNORECASE)
+            if match:
+                matched_value = match.group(0).upper().replace(' ', '').replace('.', '').replace('-', '')
+                if key == 'resolution':
+                    info[key] = self._normalize_resolution(matched_value)
+                elif key == 'source':
+                    info[key] = self._normalize_source(matched_value)
+                elif key == 'hdr':
+                    info[key] = self._normalize_hdr(matched_value)
+                elif key == 'bit_depth':
+                    info[key] = self._normalize_bit_depth(matched_value)
+        return info
+
+    def choose_best_file(self, files: List[str]):
+        # Use the extract function to compare and select the best file based on priority
+        file_infos = [self.extract_video_info(f) for f in files]
+        for key in self.priority:
+            files = self._compare_and_filter(files, file_infos, key)
+            if len(files) == 1:
+                break
+        return files[0]
+
+    def _compare_and_filter(self, files, infos, key):
+        order = self.priority[key]
+        sorted_files = sorted(zip(files, infos), key=lambda x: order.index(x[1][key]) if x[1][key] in order else len(order))
+        return [f[0] for f in sorted_files if f[1][key] == sorted_files[0][1][key]]
+
+    def _normalize_resolution(self, value):
+        mapping = {
+            'UHD': '4K', '4K': '4K',
+            'FHD': '1080p', '1080P': '1080p',
+            'HD': '720p', '720P': '720p',
+            'QHD': '2K', '2K': '2K', '1440P': '2K'
+        }
+        return mapping.get(value, value)
+
+    def _normalize_source(self, value):
+        mapping = {
+            'BLURAY': 'BLU-RAY', 'BD': 'BLU-RAY', 'BRRIP': 'BLU-RAY', 'BDRIP': 'BLU-RAY',
+            'WEB-DL': 'WEB-DL', 'WEBDL': 'WEB-DL',
+            'WEBRIP': 'WEBRIP',
+            'HDTV': 'HDTV',
+            'DVD': 'DVD', 'DVDRIP': 'DVD',
+            'REMUX': 'REMUX'
+        }
+        return mapping.get(value, '其它')
+
+    def _normalize_hdr(self, value):
+        mapping = {
+            'HDR10+': 'HDR10+', 'HDR10': 'HDR10',
+            'DOLBYVISION': 'Dolby Vision',
+            'HLG': 'HLG'
+        }
+        return mapping.get(value, 'SDR')
+
+    def _normalize_bit_depth(self, value):
+        mapping = {
+            '8BIT': '8-bit', '10BIT': '10-bit',
+            '12BIT': '12-bit', '16BIT': '16-bit'
+        }}
+        return mapping.get(value, '未知')
+
+    def get_page(self) -> List[dict]:
+        # Update with configuration options for sorting and priority
+        return [
+            {
+                'component': 'VSelect',
+                'props': {
+                    'label': '选择去重规则',
+                    'items': [
+                        {'text': '分辨率', 'value': 'resolution'},
+                        {'text': '来源', 'value': 'source'},
+                        {'text': 'HDR类型', 'value': 'hdr'},
+                        {'text': '色深', 'value': 'bit_depth'},
+                        {'text': '文件大小', 'value': 'file_size'},
+                        {'text': '创建时间', 'value': 'creation_time'}
+                    ]
+                }
+            }
+        ]
