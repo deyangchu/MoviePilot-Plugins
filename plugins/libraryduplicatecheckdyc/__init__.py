@@ -1,4 +1,3 @@
-
 import re
 import shutil
 import threading
@@ -674,52 +673,3 @@ class LibraryDuplicateCheckDYC(_PluginBase):
                 self._scheduler = None
         except Exception as e:
             logger.error("退出插件失败：%s" % str(e))
-
-
-import json
-from flask import request
-
-def save_settings(settings):
-    with open('settings.json', 'w') as file:
-        json.dump(settings, file)
-
-def load_settings():
-    try:
-        with open('settings.json', 'r') as file:
-            return json.load(file)
-    except FileNotFoundError:
-        return {
-            'resolution_priority': ['4K', '1080p', '720p'],
-            'format_priority': ['H.265', 'H.264'],
-            'source_priority': ['BLU-RAY', 'WEB-DL', 'HDTV', 'DVD', 'OTHER'],
-            'bit_depth_priority': ['10bit HDR', '8bit'],
-            'additional_criteria': ['file_size', 'creation_time']
-        }
-
-def normalize_video_quality(resolution, encoding_format, source, bit_depth, hdr_type):
-    settings = load_settings()
-    resolution = next((std for pat, std in settings['resolution_priority'] if re.search(pat, resolution)), resolution)
-    encoding_format = next((std for pat, std in settings['format_priority'] if re.search(pat, encoding_format)), encoding_format)
-    source = next((std for pat, std in settings['source_priority'] if re.search(pat, source)), source)
-    bit_depth = '10bit HDR' if bit_depth == '10bit' or re.search(r'(?i)hdr10|hdr10\+|dolby vision', hdr_type) else '8bit'
-    return resolution, encoding_format, source, bit_depth
-
-def decide_deduplication(files):
-    settings = load_settings()
-    files_sorted = sorted(files, key=lambda f: (
-        settings['resolution_priority'].index(f['resolution']),
-        settings['format_priority'].index(f['encoding_format']),
-        settings['source_priority'].index(f['source']),
-        settings['bit_depth_priority'].index(f['bit_depth']),
-        -f['size'],
-        -f['creation_time'].timestamp()
-    ), reverse=True)
-    return files_sorted[0], files_sorted[1:]
-
-@app.route('/settings', methods=['GET', 'POST'])
-def settings_route():
-    if request.method == 'POST':
-        save_settings(request.json)
-        return {'status': 'Settings updated successfully'}, 200
-    else:
-        return load_settings()
