@@ -744,8 +744,8 @@ class EnhancedVideoFileManager:
             'QHD': '2K', '2K': '2K', '1440P': '2K'
         }
         return mapping.get(value, value)
-
-    def _normalize_source(self, value):
+从 app.log 导入记录器
+    def _normalize_source(self, value):from apscheduler.schedulers.background import BackgroundScheduler
         mapping = {
             'BLURAY': 'BLU-RAY', 'BD': 'BLU-RAY', 'BRRIP': 'BLU-RAY', 'BDRIP': 'BLU-RAY',
             'WEB-DL': 'WEB-DL', 'WEBDL': 'WEB-DL',
@@ -768,23 +768,27 @@ class EnhancedVideoFileManager:
         mapping = {
             '8BIT': '8-bit', '10BIT': '10-bit',
             '12BIT': '12-bit', '16BIT': '16-bit'
-        }}
+        }
         return mapping.get(value, '未知')
 
-    def update_config_options(self, config):
-        # Update the configuration to include new sorting and priority options
-        config['options'].append(
-            {
-                'label': '去重规则',
-                'type': 'select',
-                'items': [
-                    {'label': '分辨率', 'value': 'resolution'},
-                    {'label': '来源', 'value': 'source'},
-                    {'label': 'HDR类型', 'value': 'hdr'},
-                    {'label': '色深', 'value': 'bit_depth'},
-                    {'label': '文件大小', 'value': 'file_size'},
-                    {'label': '创建时间', 'value': 'creation_time'}
-                ],
-                'description': '选择去重时优先考虑的规则顺序。'
-            }
-        )
+    def get_config(self):
+        # Configuration similar to the existing "保留规则" format
+        return {
+            "label": "去重规则",
+            "type": "select",
+            "default": "resolution",
+            "choices": [
+                {"value": "resolution", "label": "分辨率"},
+                {"value": "source", "label": "来源"},
+                {"value": "hdr", "label": "HDR类型"},
+                {"value": "bit_depth", "label": "色深"},
+                {"value": "file_size", "label": "文件大小"},
+                {"value": "creation_time", "label": "创建时间"}
+            ],
+            "description": "选择去重时优先考虑的规则顺序。"
+        }
+
+    def update_plugin_settings(self, settings):
+        # Update settings with the new deduplication rule configuration
+        settings["deduplication_rules"] = self.get_config()
+
