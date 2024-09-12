@@ -1,4 +1,5 @@
-  "LibraryDuplicateCheckDYC": {
+{
+  "LibraryDuplicateCheck": {
     "name": "媒体库重复媒体检测",
     "description": "媒体库重复媒体检查，可选保留规则保留其一。",
     "labels": "云盘,媒体库",
@@ -18,3 +19,5 @@
       "v1.1": "支持自动刷新媒体库",
       "v1.0": "媒体库重复媒体检查，可选择保留规则保留其一"
     }
+  }
+}
