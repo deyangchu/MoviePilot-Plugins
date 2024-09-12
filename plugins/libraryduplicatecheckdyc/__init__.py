@@ -33,7 +33,7 @@ class LibraryDuplicateCheckDYC(_PluginBase):
     # 插件版本
     plugin_version = "1.9"
     # 插件作者
-    plugin_author = "DYC"
+    plugin_author = "thsrite"
     # 作者主页
     author_url = "https://github.com/thsrite"
     # 插件配置项ID前缀
@@ -771,21 +771,20 @@ class EnhancedVideoFileManager:
         }}
         return mapping.get(value, '未知')
 
-    def get_page(self) -> List[dict]:
-        # Update with configuration options for sorting and priority
-        return [
+    def update_config_options(self, config):
+        # Update the configuration to include new sorting and priority options
+        config['options'].append(
             {
-                'component': 'VSelect',
-                'props': {
-                    'label': '选择去重规则',
-                    'items': [
-                        {'text': '分辨率', 'value': 'resolution'},
-                        {'text': '来源', 'value': 'source'},
-                        {'text': 'HDR类型', 'value': 'hdr'},
-                        {'text': '色深', 'value': 'bit_depth'},
-                        {'text': '文件大小', 'value': 'file_size'},
-                        {'text': '创建时间', 'value': 'creation_time'}
-                    ]
-                }
+                'label': '去重规则',
+                'type': 'select',
+                'items': [
+                    {'label': '分辨率', 'value': 'resolution'},
+                    {'label': '来源', 'value': 'source'},
+                    {'label': 'HDR类型', 'value': 'hdr'},
+                    {'label': '色深', 'value': 'bit_depth'},
+                    {'label': '文件大小', 'value': 'file_size'},
+                    {'label': '创建时间', 'value': 'creation_time'}
+                ],
+                'description': '选择去重时优先考虑的规则顺序。'
             }
-        ]
+        )
