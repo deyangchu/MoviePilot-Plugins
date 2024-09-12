@@ -1,3 +1,4 @@
+
 import re
 import shutil
 import threading
@@ -19,69 +20,7 @@ from app.schemas.types import EventType, NotificationType
 from app.utils.http import RequestUtils
 from app.utils.system import SystemUtils
 
-
 lock = threading.Lock()
-
-def normalize_video_quality(self, resolution, encoding_format, source, bit_depth, hdr_type):
-    # Normalize resolution
-    resolution_mapping = {
-        r'(?i)4k|uhd|ultra hd': '4K',
-        r'(?i)1080p|full hd|fhd': '1080p',
-        r'(?i)720p|hd': '720p'
-    }
-    for pattern, standard in resolution_mapping.items():
-        if re.search(pattern, resolution):
-            resolution = standard
-            break
-
-    # Normalize encoding format
-    encoding_mapping = {
-        r'(?i)h\.?265|x265|hevc': 'H.265',
-        r'(?i)h\.?264|x264|avc': 'H.264'
-    }
-    for pattern, standard in encoding_mapping.items():
-        if re.search(pattern, encoding_format):
-            encoding_format = standard
-            break
-
-    # Normalize source
-    source_mapping = {
-        r'(?i)blu-?ray|bd|bdremux': 'BLU-RAY',
-        r'(?i)web-?dl': 'WEB-DL',
-        r'(?i)web-?rip': 'WEBRIP',
-        r'(?i)hdtv': 'HDTV',
-        r'(?i)dvd': 'DVD'
-    }
-    for pattern, standard in source_mapping.items():
-        if re.search(pattern, source):
-            source = standard
-            break
-    else:
-        source = 'OTHER'
-
-    # Combine bit depth and HDR type
-    if bit_depth == '10bit' or re.search(r'(?i)hdr10|hdr10\+|dolby vision', hdr_type):
-        bit_depth = '10bit HDR'
-    else:
-        bit_depth = '8bit'
-
-    return resolution, encoding_format, source, bit_depth
-
-def decide_deduplication(self, files):
-    files_sorted = sorted(
-        files,
-        key=lambda f: (
-            f['resolution'],
-            f['encoding_format'],
-            f['source'],
-            f['bit_depth'],
-            -f['size'],
-            -f['creation_time'].timestamp()
-        ),
-        reverse=True
-    )
-    return files_sorted[0], files_sorted[1:]  # 保留最高优先级的文件，其他标记为删除
-
 
 
 class LibraryDuplicateCheckDYC(_PluginBase):
@@ -98,7 +37,7 @@ class LibraryDuplicateCheckDYC(_PluginBase):
     # 作者主页
     author_url = "https://github.com/thsrite"
     # 插件配置项ID前缀
-    plugin_config_prefix = "libraryduplicatecheckDYC_"
+    plugin_config_prefix = "libraryduplicatecheckdyc_"
     # 加载顺序
     plugin_order = 15
     # 可使用的用户级别
@@ -459,12 +398,12 @@ class LibraryDuplicateCheckDYC(_PluginBase):
         :return: 命令关键字、事件、描述、附带数据
         """
         return [{
-            "cmd": "/libraryduplicatecheckDYC",
+            "cmd": "/libraryduplicatecheckdyc",
             "event": EventType.PluginAction,
             "desc": "媒体库重复媒体检测",
             "category": "",
             "data": {
-                "action": "libraryduplicatecheckDYC"
+                "action": "libraryduplicatecheckdyc"
             }
         }]
 
@@ -735,3 +674,52 @@ class LibraryDuplicateCheckDYC(_PluginBase):
                 self._scheduler = None
         except Exception as e:
             logger.error("退出插件失败：%s" % str(e))
+
+
+import json
+from flask import request
+
+def save_settings(settings):
+    with open('settings.json', 'w') as file:
+        json.dump(settings, file)
+
+def load_settings():
+    try:
+        with open('settings.json', 'r') as file:
+            return json.load(file)
+    except FileNotFoundError:
+        return {
+            'resolution_priority': ['4K', '1080p', '720p'],
+            'format_priority': ['H.265', 'H.264'],
+            'source_priority': ['BLU-RAY', 'WEB-DL', 'HDTV', 'DVD', 'OTHER'],
+            'bit_depth_priority': ['10bit HDR', '8bit'],
+            'additional_criteria': ['file_size', 'creation_time']
+        }
+
+def normalize_video_quality(resolution, encoding_format, source, bit_depth, hdr_type):
+    settings = load_settings()
+    resolution = next((std for pat, std in settings['resolution_priority'] if re.search(pat, resolution)), resolution)
+    encoding_format = next((std for pat, std in settings['format_priority'] if re.search(pat, encoding_format)), encoding_format)
+    source = next((std for pat, std in settings['source_priority'] if re.search(pat, source)), source)
+    bit_depth = '10bit HDR' if bit_depth == '10bit' or re.search(r'(?i)hdr10|hdr10\+|dolby vision', hdr_type) else '8bit'
+    return resolution, encoding_format, source, bit_depth
+
+def decide_deduplication(files):
+    settings = load_settings()
+    files_sorted = sorted(files, key=lambda f: (
+        settings['resolution_priority'].index(f['resolution']),
+        settings['format_priority'].index(f['encoding_format']),
+        settings['source_priority'].index(f['source']),
+        settings['bit_depth_priority'].index(f['bit_depth']),
+        -f['size'],
+        -f['creation_time'].timestamp()
+    ), reverse=True)
+    return files_sorted[0], files_sorted[1:]
+
+@app.route('/settings', methods=['GET', 'POST'])
+def settings_route():
+    if request.method == 'POST':
+        save_settings(request.json)
+        return {'status': 'Settings updated successfully'}, 200
+    else:
+        return load_settings()
