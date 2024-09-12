@@ -86,7 +86,7 @@ def decide_deduplication(self, files):
 
 class LibraryDuplicateCheckDYC(_PluginBase):
     # 插件名称
-    plugin_name = "媒体库重复媒体检测"
+    plugin_name = "媒体库重复媒体检测DYC"
     # 插件描述
     plugin_desc = "媒体库重复媒体检查，可选保留规则保留其一。"
     # 插件图标
@@ -94,7 +94,7 @@ class LibraryDuplicateCheckDYC(_PluginBase):
     # 插件版本
     plugin_version = "1.9"
     # 插件作者
-    plugin_author = "thsrite"
+    plugin_author = "DYC"
     # 作者主页
     author_url = "https://github.com/thsrite"
     # 插件配置项ID前缀
